@@ -39,6 +39,7 @@ This project explores how these techniques degrade model performance—and how t
 - Unicode normalization
 - Confusable character detection
 - Suspicion scoring
+- Best-effort deobfuscation with candidate alternatives and a change audit
 
 ---
 
@@ -85,6 +86,18 @@ python cli.py --text "your message" --prob 0.25 --homoglyph-prob 0.6
 Sample probabilities from ranges (per variant):
 
 python cli.py --text "your message" --prob 0.05:0.20 --homoglyph-prob 0.30:0.70 --variants 5 --seed 42
+
+Recover a conservative best-effort reading:
+
+python cli.py --text "Ρаypаl  l0g1n" --decode
+
+Allow more speculative punctuation and spacing cleanup:
+
+python cli.py --text "h.e_l-l!o" --decode --decode-level aggressive
+
+Decoding reports the best candidate, alternative readings, input and residual
+suspicion scores, recovery confidence, and an audit of every change. Recovery is
+heuristic: random insertions, deletions, and swaps cannot always be reversed.
 
 ---
 

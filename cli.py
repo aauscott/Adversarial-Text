@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import random
 
+from analysis.deobfuscation import DeobfuscationResult, deobfuscate_text
 from analysis.scoring import suspicion_score
 from pipeline.generator import DEFAULT_TRANSFORM_ORDER, PipelineConfig, apply_pipeline, resolve_transforms
 
@@ -75,7 +76,20 @@ def _build_pipeline_config(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Adversarial Text Lab CLI")
-    parser.add_argument("--text", required=True, help="Input text to transform")
+    parser.add_argument("--text", required=True, help="Input text to transform or decode")
+    parser.add_argument("--decode", action="store_true", help="Recover a best-effort clean reading of --text")
+    parser.add_argument(
+        "--decode-level",
+        choices=("conservative", "aggressive"),
+        default="conservative",
+        help="How readily decoding may remove ambiguous punctuation or spacing (default: conservative)",
+    )
+    parser.add_argument(
+        "--max-candidates",
+        type=int,
+        default=5,
+        help="Maximum decoded candidates to consider (default: 5)",
+    )
     parser.add_argument("--variants", type=int, default=3, help="How many transformed variants to generate (default: 3)")
     parser.add_argument("--seed", type=int, default=None, help="Optional seed for reproducible output")
     parser.add_argument("--only", nargs="+", default=None, help=("Run only these transforms. Accepts space or comma separated names. " f"Canonical names: {', '.join(DEFAULT_TRANSFORM_ORDER)}"))
@@ -88,9 +102,62 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print_decode_result(result: DeobfuscationResult) -> None:
+    print(f"Input: {result.original_text}")
+    print(f"Best candidate: {result.best_candidate}")
+    print("")
+    print(
+        "Scores: input_suspicion={input_score:.2f}, residual_suspicion={residual_score:.2f}, "
+        "recovery_confidence={confidence:.1f}%, suspicion_reduction={reduction:.1f}%".format(
+            input_score=result.input_suspicion_score,
+            residual_score=result.residual_suspicion_score,
+            confidence=result.recovery_confidence,
+            reduction=result.suspicion_reduction,
+        )
+    )
+    print(f"Unresolved markers: {result.unresolved_markers}")
+
+    print("")
+    print("Changes:")
+    if not result.changes:
+        print("  None")
+    for change in result.changes:
+        original = repr(change.original)
+        replacement = repr(change.replacement)
+        print(
+            f"  [{change.category}] index={change.index}: {original} -> {replacement} "
+            f"(confidence={change.confidence * 100:.0f}%)"
+        )
+        print(f"    {change.explanation}")
+
+    if result.alternatives:
+        print("")
+        print("Alternatives:")
+        for index, alternative in enumerate(result.alternatives, start=1):
+            print(f"  {index}. {alternative}")
+
+    if result.warnings:
+        print("")
+        print("Warnings:")
+        for warning in result.warnings:
+            print(f"  - {warning}")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.decode:
+        try:
+            result = deobfuscate_text(
+                args.text,
+                level=args.decode_level,
+                max_candidates=args.max_candidates,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        _print_decode_result(result)
+        return
 
     only = _parse_transform_args(args.only)
     exclude = _parse_transform_args(args.exclude)
