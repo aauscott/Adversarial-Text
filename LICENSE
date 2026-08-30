@@ -1,18 +1,6 @@
-# Third-party notices
-
-## Codebox Homoglyph
-
-The file `src/adversarial_text/data/codebox_ascii_homoglyphs.txt` is an adapted,
-ASCII-anchored subset of character groups from
-[Codebox Homoglyph](https://github.com/codebox/homoglyph). The subset keeps
-practical Basic Multilingual Plane characters and omits supplementary-plane
-mathematical alphabets.
-
-Source data: https://github.com/codebox/homoglyph/blob/master/raw_data/chars.txt
-
 MIT License
 
-Copyright (c) 2015 Rob Dawson
+Copyright (c) 2026 Aaron Scott
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -6,7 +6,7 @@ import string
 import unicodedata
 from dataclasses import dataclass
 
-from adversarial.transformations import HOMOGLYPH_MAP, INVISIBLE_SPACING_CHARS, LEETSPEAK_MAP
+from .transformations import HOMOGLYPH_MAP, INVISIBLE_SPACING_CHARS, LEETSPEAK_MAP
 
 CONFUSABLE_SET = {
     glyph

@@ -1,6 +1,6 @@
 import unittest
 
-from adversarial.transformations import (
+from adversarial_text import (
     HOMOGLYPH_MAP,
     INVISIBLE_SPACING_CHARS,
     homoglyph_substitution,

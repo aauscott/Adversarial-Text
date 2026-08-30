@@ -1,12 +1,15 @@
 import unittest
 
-from analysis.scoring import (
+from adversarial_text import (
+    PipelineConfig,
+    apply_pipeline,
     detect_confusables,
     detect_invisible_spacing,
+    generate_variants,
+    resolve_transforms,
     suspicion_score,
     unicode_normalize,
 )
-from pipeline.generator import PipelineConfig, apply_pipeline, generate_variants, resolve_transforms
 
 
 class PipelineAnalysisTests(unittest.TestCase):

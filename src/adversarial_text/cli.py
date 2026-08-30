@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 import random
 
-from adversarial.homoglyph_data import HOMOGLYPH_SETS
-from analysis.deobfuscation import DeobfuscationResult, deobfuscate_text
-from analysis.scoring import suspicion_score
-from pipeline.generator import DEFAULT_TRANSFORM_ORDER, PipelineConfig, apply_pipeline, resolve_transforms
+from .deobfuscation import DeobfuscationResult, deobfuscate_text
+from .generator import DEFAULT_TRANSFORM_ORDER, PipelineConfig, apply_pipeline, resolve_transforms
+from .homoglyph_data import HOMOGLYPH_SETS
+from .scoring import suspicion_score
 
 
 def _parse_transform_args(raw_values: list[str] | None) -> list[str] | None:
@@ -90,7 +90,7 @@ def _build_pipeline_config(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Adversarial Text Lab CLI")
+    parser = argparse.ArgumentParser(description="Adversarial Text CLI")
     parser.add_argument("--text", required=True, help="Input text to transform or decode")
     parser.add_argument("--decode", action="store_true", help="Recover a best-effort clean reading of --text")
     parser.add_argument(

@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from cli import _build_pipeline_config, _parse_probability_spec
+from adversarial_text.cli import _build_pipeline_config, _parse_probability_spec
 
 
 class CliProbabilityTests(unittest.TestCase):

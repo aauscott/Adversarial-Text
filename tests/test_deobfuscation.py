@@ -1,6 +1,6 @@
 import unittest
 
-from analysis.deobfuscation import deobfuscate_text
+from adversarial_text import deobfuscate_text
 
 
 class DeobfuscationTests(unittest.TestCase):

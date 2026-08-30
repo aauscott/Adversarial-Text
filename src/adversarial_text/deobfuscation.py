@@ -7,7 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Literal
 
-from adversarial.transformations import (
+from .transformations import (
     HOMOGLYPH_MAP,
     INVISIBLE_SPACING_CHARS,
     LEETSPEAK_MAP,

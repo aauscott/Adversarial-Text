@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass
 from typing import Sequence
 
-from adversarial.transformations import (
+from .transformations import (
     homoglyph_substitution,
     invisible_spacing_noise,
     leetspeak_transformation,
@@ -148,7 +148,7 @@ def generate_variants(
     transforms: Sequence[str] | None = None,
     exclude_transforms: Sequence[str] | None = None,
 ) -> list[str]:
-    """Generate multiple adversarial variants from a single input."""
+    """Generate multiple confusable variants from a single input."""
     resolved_transforms = resolve_transforms(only=transforms, exclude=exclude_transforms)
     root_rng = random.Random(seed)
     variants: list[str] = []
