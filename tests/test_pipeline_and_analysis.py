@@ -1,6 +1,11 @@
 import unittest
 
-from analysis.scoring import detect_confusables, suspicion_score, unicode_normalize
+from analysis.scoring import (
+    detect_confusables,
+    detect_invisible_spacing,
+    suspicion_score,
+    unicode_normalize,
+)
 from pipeline.generator import PipelineConfig, apply_pipeline, generate_variants, resolve_transforms
 
 
@@ -29,6 +34,7 @@ class PipelineAnalysisTests(unittest.TestCase):
             homoglyph_probability=0.0,
             leetspeak_probability=0.0,
             spacing_noise_probability=0.0,
+            invisible_spacing_probability=0.0,
             random_noise_probability=0.0,
         )
         variants = generate_variants("safe text", num_variants=1, config=config, seed=7)
@@ -46,6 +52,7 @@ class PipelineAnalysisTests(unittest.TestCase):
             homoglyph_probability=1.0,
             leetspeak_probability=1.0,
             spacing_noise_probability=0.0,
+            invisible_spacing_probability=0.0,
             random_noise_probability=0.0,
         )
         text = "a"
@@ -59,6 +66,7 @@ class PipelineAnalysisTests(unittest.TestCase):
             homoglyph_probability=1.0,
             leetspeak_probability=1.0,
             spacing_noise_probability=0.0,
+            invisible_spacing_probability=0.0,
             random_noise_probability=0.0,
         )
         variants = generate_variants(
@@ -69,6 +77,13 @@ class PipelineAnalysisTests(unittest.TestCase):
             exclude_transforms=["homoglyph"],
         )
         self.assertEqual(variants[0], "4")
+
+    def test_invisible_spacing_is_detected_and_scored(self):
+        text = "pay\u200bpal"
+        result = suspicion_score(text)
+        self.assertEqual(detect_invisible_spacing(text), 1)
+        self.assertEqual(result.invisible_count, 1)
+        self.assertGreater(result.score, 0)
 
 
 if __name__ == "__main__":

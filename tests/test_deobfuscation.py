@@ -44,6 +44,15 @@ class DeobfuscationTests(unittest.TestCase):
             any(change.category == "punctuation_noise" for change in result.changes)
         )
 
+    def test_removes_invisible_spacing_with_an_audit_entry(self):
+        result = deobfuscate_text("pay\u200bpal\u2060")
+
+        self.assertEqual(result.best_candidate, "paypal")
+        self.assertEqual(
+            sum(change.category == "invisible_spacing" for change in result.changes),
+            2,
+        )
+
     def test_aggressive_cleanup_can_make_leetspeak_word_like(self):
         result = deobfuscate_text("t 3 s t", level="aggressive")
 

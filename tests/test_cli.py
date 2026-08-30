@@ -32,6 +32,7 @@ class CliProbabilityTests(unittest.TestCase):
         self.assertEqual(config.homoglyph_probability, 0.7)
         self.assertEqual(config.leetspeak_probability, 0.2)
         self.assertEqual(config.spacing_noise_probability, 0.2)
+        self.assertEqual(config.invisible_spacing_probability, 0.2)
         self.assertEqual(config.random_noise_probability, 0.2)
 
     def test_build_pipeline_config_samples_ranges(self):
@@ -46,6 +47,24 @@ class CliProbabilityTests(unittest.TestCase):
         )
         self.assertGreaterEqual(config.homoglyph_probability, 0.1)
         self.assertLessEqual(config.homoglyph_probability, 0.3)
+
+    def test_build_pipeline_config_sets_homoglyph_filters(self):
+        config = _build_pipeline_config(
+            rng=random.Random(3),
+            global_spec=None,
+            homoglyph_spec=None,
+            leetspeak_spec=None,
+            spacing_spec=None,
+            random_spec=None,
+            invisible_spec=(0.4, 0.4),
+            homoglyph_include_sets=["greek", "cyrillic"],
+            homoglyph_exclude_sets=["fullwidth"],
+            preserve_digits=True,
+        )
+        self.assertEqual(config.invisible_spacing_probability, 0.4)
+        self.assertEqual(config.homoglyph_include_sets, ("greek", "cyrillic"))
+        self.assertEqual(config.homoglyph_exclude_sets, ("fullwidth",))
+        self.assertTrue(config.preserve_digits)
 
 
 if __name__ == "__main__":

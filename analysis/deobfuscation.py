@@ -7,7 +7,12 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Literal
 
-from adversarial.transformations import HOMOGLYPH_MAP, LEETSPEAK_MAP, PUNCTUATION_NOISE
+from adversarial.transformations import (
+    HOMOGLYPH_MAP,
+    INVISIBLE_SPACING_CHARS,
+    LEETSPEAK_MAP,
+    PUNCTUATION_NOISE,
+)
 
 from .scoring import suspicion_score
 
@@ -54,6 +59,27 @@ def _reverse_map(mapping: dict[str, str | tuple[str, ...]]) -> dict[str, tuple[s
 HOMOGLYPH_REVERSE_MAP = _reverse_map(HOMOGLYPH_MAP)
 LEETSPEAK_REVERSE_MAP = _reverse_map(LEETSPEAK_MAP)
 _NOISE_SET = set(PUNCTUATION_NOISE)
+_INVISIBLE_SET = set(INVISIBLE_SPACING_CHARS)
+
+
+def _remove_invisible_spacing(text: str) -> tuple[str, list[DeobfuscationChange]]:
+    output: list[str] = []
+    changes: list[DeobfuscationChange] = []
+    for index, character in enumerate(text):
+        if character not in _INVISIBLE_SET:
+            output.append(character)
+            continue
+        changes.append(
+            DeobfuscationChange(
+                index=index,
+                category="invisible_spacing",
+                original=character,
+                replacement="",
+                confidence=0.99,
+                explanation="Removed a zero-width or discretionary separator.",
+            )
+        )
+    return "".join(output), changes
 
 
 def _unicode_normalize(text: str) -> tuple[str, list[DeobfuscationChange]]:
@@ -327,7 +353,8 @@ def deobfuscate_text(
         raise ValueError("max_candidates must be at least 1.")
 
     input_analysis = suspicion_score(text)
-    normalized, normalization_changes = _unicode_normalize(text)
+    visible_text, invisible_changes = _remove_invisible_spacing(text)
+    normalized, normalization_changes = _unicode_normalize(visible_text)
     spacing_changes: list[DeobfuscationChange] = []
     spacing_cleaned = _clean_spacing_and_noise(normalized, level, spacing_changes)
     deconfused, homoglyph_changes = _replace_homoglyphs(spacing_cleaned)
@@ -350,7 +377,13 @@ def deobfuscate_text(
         # cleanup is still the same, but the leetspeak audit must acknowledge it.
         has_ambiguity = True
 
-    changes = normalization_changes + spacing_changes + homoglyph_changes + leet_changes
+    changes = (
+        invisible_changes
+        + normalization_changes
+        + spacing_changes
+        + homoglyph_changes
+        + leet_changes
+    )
     residual_analysis = suspicion_score(best_candidate)
     confidences = [change.confidence for change in changes]
     recovery_confidence = sum(confidences) / len(confidences) if confidences else 1.0
@@ -368,7 +401,7 @@ def deobfuscate_text(
     else:
         suspicion_reduction = 0.0
 
-    unresolved_markers = residual_analysis.confusable_count + len(
+    unresolved_markers = residual_analysis.confusable_count + residual_analysis.invisible_count + len(
         _leet_eligible_indices(best_candidate, level)
     )
     warnings = [

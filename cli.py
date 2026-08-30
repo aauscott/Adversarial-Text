@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import random
 
+from adversarial.homoglyph_data import HOMOGLYPH_SETS
 from analysis.deobfuscation import DeobfuscationResult, deobfuscate_text
 from analysis.scoring import suspicion_score
 from pipeline.generator import DEFAULT_TRANSFORM_ORDER, PipelineConfig, apply_pipeline, resolve_transforms
@@ -64,13 +65,27 @@ def _build_pipeline_config(
     leetspeak_spec: tuple[float, float] | None,
     spacing_spec: tuple[float, float] | None,
     random_spec: tuple[float, float] | None,
+    invisible_spec: tuple[float, float] | None = None,
+    homoglyph_include_sets: list[str] | None = None,
+    homoglyph_exclude_sets: list[str] | None = None,
+    preserve_digits: bool = False,
 ) -> PipelineConfig:
     defaults = PipelineConfig()
     return PipelineConfig(
         homoglyph_probability=_sample_probability(homoglyph_spec or global_spec, defaults.homoglyph_probability, rng),
         leetspeak_probability=_sample_probability(leetspeak_spec or global_spec, defaults.leetspeak_probability, rng),
         spacing_noise_probability=_sample_probability(spacing_spec or global_spec, defaults.spacing_noise_probability, rng),
+        invisible_spacing_probability=_sample_probability(
+            invisible_spec or global_spec,
+            defaults.invisible_spacing_probability,
+            rng,
+        ),
         random_noise_probability=_sample_probability(random_spec or global_spec, defaults.random_noise_probability, rng),
+        homoglyph_include_sets=(
+            tuple(homoglyph_include_sets) if homoglyph_include_sets else None
+        ),
+        homoglyph_exclude_sets=tuple(homoglyph_exclude_sets or ()),
+        preserve_digits=preserve_digits,
     )
 
 
@@ -98,7 +113,31 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--homoglyph-prob", default=None, help="Homoglyph probability as float or range min:max.")
     parser.add_argument("--leetspeak-prob", default=None, help="Leetspeak probability as float or range min:max.")
     parser.add_argument("--spacing-prob", default=None, help="Spacing noise probability as float or range min:max.")
+    parser.add_argument("--invisible-prob", default=None, help="Invisible spacing probability as float or range min:max.")
     parser.add_argument("--random-prob", default=None, help="Random char noise probability as float or range min:max.")
+    parser.add_argument(
+        "--homoglyph-include",
+        nargs="+",
+        default=None,
+        help=(
+            "Use only these homoglyph sets (space or comma separated): "
+            f"{', '.join(HOMOGLYPH_SETS)}"
+        ),
+    )
+    parser.add_argument(
+        "--homoglyph-exclude",
+        nargs="+",
+        default=None,
+        help=(
+            "Exclude these homoglyph sets (space or comma separated): "
+            f"{', '.join(HOMOGLYPH_SETS)}"
+        ),
+    )
+    parser.add_argument(
+        "--preserve-digits",
+        action="store_true",
+        help="Do not replace existing digits during homoglyph substitution.",
+    )
     return parser
 
 
@@ -161,6 +200,8 @@ def main() -> None:
 
     only = _parse_transform_args(args.only)
     exclude = _parse_transform_args(args.exclude)
+    homoglyph_include = _parse_transform_args(args.homoglyph_include)
+    homoglyph_exclude = _parse_transform_args(args.homoglyph_exclude)
 
     try:
         active_transforms = resolve_transforms(only=only, exclude=exclude)
@@ -169,6 +210,7 @@ def main() -> None:
         homoglyph_spec = _parse_probability_spec(args.homoglyph_prob, "--homoglyph-prob")
         leetspeak_spec = _parse_probability_spec(args.leetspeak_prob, "--leetspeak-prob")
         spacing_spec = _parse_probability_spec(args.spacing_prob, "--spacing-prob")
+        invisible_spec = _parse_probability_spec(args.invisible_prob, "--invisible-prob")
         random_spec = _parse_probability_spec(args.random_prob, "--random-prob")
 
         root_rng = random.Random(args.seed)
@@ -182,6 +224,10 @@ def main() -> None:
                 leetspeak_spec=leetspeak_spec,
                 spacing_spec=spacing_spec,
                 random_spec=random_spec,
+                invisible_spec=invisible_spec,
+                homoglyph_include_sets=homoglyph_include,
+                homoglyph_exclude_sets=homoglyph_exclude,
+                preserve_digits=args.preserve_digits,
             )
             variants.append(
                 apply_pipeline(text=args.text, config=config, seed=variant_seed, transforms=active_transforms)
@@ -197,9 +243,11 @@ def main() -> None:
         result = suspicion_score(variant)
         print(f"{i}. {variant}")
         print(
-            "   score={score:.2f}, confusables={confusables}, leetspeak={leet}, punctuation_ratio={ratio:.3f}".format(
+            "   score={score:.2f}, confusables={confusables}, invisibles={invisibles}, "
+            "leetspeak={leet}, punctuation_ratio={ratio:.3f}".format(
                 score=result.score,
                 confusables=result.confusable_count,
+                invisibles=result.invisible_count,
                 leet=result.leetspeak_count,
                 ratio=result.punctuation_ratio,
             )

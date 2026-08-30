@@ -1,7 +1,13 @@
 """Text analysis helpers for suspicious obfuscation."""
 
 from .deobfuscation import DeobfuscationChange, DeobfuscationResult, deobfuscate_text
-from .scoring import AnalysisResult, detect_confusables, suspicion_score, unicode_normalize
+from .scoring import (
+    AnalysisResult,
+    detect_confusables,
+    detect_invisible_spacing,
+    suspicion_score,
+    unicode_normalize,
+)
 
 __all__ = [
     "AnalysisResult",
@@ -9,6 +15,7 @@ __all__ = [
     "DeobfuscationResult",
     "unicode_normalize",
     "detect_confusables",
+    "detect_invisible_spacing",
     "suspicion_score",
     "deobfuscate_text",
 ]

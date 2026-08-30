@@ -6,41 +6,47 @@ import random
 import string
 from typing import Iterable
 
-# Visual confusables; some are font-dependent, so this set favors common high-similarity glyphs.
-HOMOGLYPH_MAP = {
+from .homoglyph_data import filter_homoglyph_map, load_codebox_homoglyphs, merge_homoglyph_maps
+
+# Project-selected glyphs stay explicit and first in candidate order. Generation
+# still selects uniformly from the complete merged tuple.
+CURATED_HOMOGLYPH_MAP = {
     "a": ("а", "α"),  # cyrillic a, greek alpha
-    "c": ("с"),  # cyrillic es
-    "e": ("е"),  # cyrillic ie
-    "h": ("һ"),  # cyrillic shha
-    "i": ("і"),  # cyrillic byelorussian-ukrainian i
-    "j": ("ј"),  # cyrillic je
+    "c": ("с",),  # cyrillic es
+    "e": ("е",),  # cyrillic ie
+    "h": ("һ",),  # cyrillic shha
+    "i": ("і", "ℹ"),  # cyrillic i, information symbol (emoji-capable on some platforms)
+    "j": ("ј",),  # cyrillic je
     "o": ("о", "ο", "օ"),  # cyrillic o, greek omicron, armenian oh
     "p": ("р", "ρ"),  # cyrillic er, greek rho
     "s": ("ѕ", "ս"),  # cyrillic dze, armenian se
     "t": ("τ", "т", "ե"),  # greek tau, cyrillic te, armenian ech
-    "w": ("ա"),  # armenian ayb
+    "w": ("ա",),  # armenian ayb
     "x": ("х", "χ"),  # cyrillic ha, greek chi
-    "y": ("у"),  # cyrillic u
+    "y": ("у",),  # cyrillic u
     "A": ("Α", "А", "Ꭺ"),  # greek alpha, cyrillic a, cherokee a
     "B": ("Β", "В", "Ᏼ"),  # greek beta, cyrillic ve, cherokee yv
-    "C": ("С"),  # cyrillic es
+    "C": ("С",),  # cyrillic es
     "E": ("Ε", "Е", "Ꭼ"),  # greek epsilon, cyrillic ie, cherokee gv
-    "F": ("Բ"),  # armenian ben
+    "F": ("Բ",),  # armenian ben
     "H": ("Η", "Н", "Ꮋ"),  # greek eta, cyrillic en, armenian ho, cherokee mi
     "I": ("Ι", "І", "Ӏ"),  # greek iota, cyrillic i, cyrillic palochka
-    "J": ("Ј"),  # cyrillic je
+    "J": ("Ј",),  # cyrillic je
     "K": ("Κ", "К", "Ꮶ"),  # greek kappa, cyrillic ka, cherokee ko
     "M": ("Μ", "М", "Ꮇ"),  # greek mu, cyrillic em, armenian men, cherokee lu
     "N": ("Ν", "Ꮑ"),  # greek nu, cherokee hna
     "O": ("Ο", "О", "Օ", "Ꮎ"),  # greek omicron, cyrillic o, armenian oh, cherokee na
     "P": ("Ρ", "Р", "Ꮲ"),  # greek rho, cyrillic er, cherokee tlv
-    "S": ("Ѕ"),  # cyrillic dze
+    "S": ("Ѕ",),  # cyrillic dze
     "T": ("Τ", "Т", "Ꭲ"),  # greek tau, cyrillic te, cherokee i
     "U": ("Ա", "Ս", "Մ"),  # armenian ayb, armenian se, armenian men
     "X": ("Χ", "Х"),  # greek chi, cyrillic ha
     "Y": ("Υ", "Ү"),  # greek upsilon, cyrillic straight u
     "Z": ("Ζ", "Ꮓ"),  # greek zeta, cherokee tsa
 }
+
+# Expanded, attributed groups are checked in for deterministic offline use.
+HOMOGLYPH_MAP = merge_homoglyph_maps(CURATED_HOMOGLYPH_MAP, load_codebox_homoglyphs())
 
 LEETSPEAK_MAP = {
     "a": "4",
@@ -57,6 +63,7 @@ LEETSPEAK_MAP = {
 
 PUNCTUATION_NOISE = "._-!@#$%^&*"
 KEYBOARD_CHARS = string.ascii_letters + string.digits + string.punctuation
+INVISIBLE_SPACING_CHARS = ("\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad")
 
 
 def _pick_rng(rng: random.Random | None = None) -> random.Random:
@@ -92,9 +99,15 @@ def homoglyph_substitution(
     text: str,
     probability: float = 0.25,
     rng: random.Random | None = None,
+    include_sets: Iterable[str] | None = None,
+    exclude_sets: Iterable[str] | None = None,
+    preserve_digits: bool = False,
 ) -> str:
     """Replace characters with visually similar unicode lookalikes."""
-    return _replace_with_probability(text=text, mapping=HOMOGLYPH_MAP, probability=probability, rng=rng)
+    mapping = filter_homoglyph_map(HOMOGLYPH_MAP, include_sets, exclude_sets)
+    if preserve_digits:
+        mapping = {character: values for character, values in mapping.items() if not character.isdigit()}
+    return _replace_with_probability(text=text, mapping=mapping, probability=probability, rng=rng)
 
 
 def leetspeak_transformation(
@@ -124,6 +137,21 @@ def spacing_punctuation_noise(
             out.append(local_rng.choice(noise_chars))
         if local_rng.random() < probability:
             out.append(" ")
+    return "".join(out)
+
+
+def invisible_spacing_noise(
+    text: str,
+    probability: float = 0.02,
+    rng: random.Random | None = None,
+) -> str:
+    """Insert zero-width or discretionary separators after visible characters."""
+    local_rng = _pick_rng(rng)
+    out: list[str] = []
+    for character in text:
+        out.append(character)
+        if not character.isspace() and local_rng.random() < probability:
+            out.append(local_rng.choice(INVISIBLE_SPACING_CHARS))
     return "".join(out)
 
 

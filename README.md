@@ -6,7 +6,7 @@ A toolkit for generating and analyzing adversarially perturbed text, with a focu
 
 Adversarial Text Lab is designed to simulate how malicious actors manipulate text to evade detection systems. It provides tools to:
 
-- Generate obfuscated text variants (homoglyphs, leetspeak, spacing attacks)
+- Generate obfuscated text variants (homoglyphs, leetspeak, visible and invisible spacing attacks)
 - Analyze and score text for suspicious patterns
 - Benchmark how robust classifiers are to adversarial inputs
 
@@ -21,6 +21,7 @@ Modern text-based detection systems (spam filters, scam classifiers) often assum
 - Unicode homoglyphs (e.g., `paypaI` vs `paypal`)
 - Character substitutions (`fr33`, `cl!ck`)
 - Random spacing and punctuation
+- Zero-width and discretionary separators
 - Obfuscated URLs
 
 This project explores how these techniques degrade model performance—and how to detect them.
@@ -34,6 +35,8 @@ This project explores how these techniques degrade model performance—and how t
 - Leetspeak transformations
 - Character-level noise injection
 - Spacing and punctuation perturbations
+- Invisible spacing perturbations
+- Optional homoglyph filtering by script or style
 
 ### Text Analysis
 - Unicode normalization
@@ -83,6 +86,22 @@ Set fixed probabilities:
 
 python cli.py --text "your message" --prob 0.25 --homoglyph-prob 0.6
 
+Limit homoglyphs to selected scripts:
+
+python cli.py --text "your message" --only homoglyph --homoglyph-include greek cyrillic
+
+Exclude compatibility-style characters:
+
+python cli.py --text "your message" --homoglyph-exclude fullwidth mathematical
+
+Preserve existing digits during homoglyph substitution (leetspeak is unaffected):
+
+python cli.py --text "Invoice 12345" --only homoglyph invisible_spacing --preserve-digits
+
+Generate only invisible spacing perturbations:
+
+python cli.py --text "your message" --only invisible_spacing --invisible-prob 0.15
+
 Sample probabilities from ranges (per variant):
 
 python cli.py --text "your message" --prob 0.05:0.20 --homoglyph-prob 0.30:0.70 --variants 5 --seed 42
@@ -98,6 +117,21 @@ python cli.py --text "h.e_l-l!o" --decode --decode-level aggressive
 Decoding reports the best candidate, alternative readings, input and residual
 suspicion scores, recovery confidence, and an audit of every change. Recovery is
 heuristic: random insertions, deletions, and swaps cannot always be reversed.
+
+### Homoglyph data
+
+The expanded map is built from the local grouped file
+`adversarial/data/codebox_ascii_homoglyphs.txt`. It is an adapted,
+ASCII-anchored subset of the MIT-licensed
+[Codebox Homoglyph character data](https://github.com/codebox/homoglyph/blob/master/raw_data/chars.txt).
+Keeping the data in the repository makes runs deterministic and avoids a network
+dependency. The original hand-picked characters remain first in each group.
+
+Available `--homoglyph-include` and `--homoglyph-exclude` values are `latin`,
+`greek`, `cyrillic`, `armenian`, `cherokee`, `coptic`, `canadian`, `fullwidth`,
+`mathematical`, and `other`. Exclusions take precedence over inclusions. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for attribution and license
+details.
 
 ---
 

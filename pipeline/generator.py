@@ -8,6 +8,7 @@ from typing import Sequence
 
 from adversarial.transformations import (
     homoglyph_substitution,
+    invisible_spacing_noise,
     leetspeak_transformation,
     random_character_noise,
     spacing_punctuation_noise,
@@ -21,10 +22,20 @@ class PipelineConfig:
     homoglyph_probability: float = 0.2
     leetspeak_probability: float = 0.2
     spacing_noise_probability: float = 0.08
+    invisible_spacing_probability: float = 0.02
     random_noise_probability: float = 0.04
+    homoglyph_include_sets: tuple[str, ...] | None = None
+    homoglyph_exclude_sets: tuple[str, ...] = ()
+    preserve_digits: bool = False
 
 
-DEFAULT_TRANSFORM_ORDER = ["homoglyph", "leetspeak", "spacing_noise", "random_noise"]
+DEFAULT_TRANSFORM_ORDER = [
+    "homoglyph",
+    "leetspeak",
+    "spacing_noise",
+    "invisible_spacing",
+    "random_noise",
+]
 TRANSFORM_ALIASES = {
     "homoglyph": "homoglyph",
     "homoglyph_substitution": "homoglyph",
@@ -34,6 +45,9 @@ TRANSFORM_ALIASES = {
     "spacing": "spacing_noise",
     "spacing_noise": "spacing_noise",
     "spacing_punctuation_noise": "spacing_noise",
+    "invisible": "invisible_spacing",
+    "invisible_spacing": "invisible_spacing",
+    "invisible_spacing_noise": "invisible_spacing",
     "random": "random_noise",
     "random_noise": "random_noise",
     "random_character_noise": "random_noise",
@@ -98,7 +112,12 @@ def apply_pipeline(
     for transform_name in active_transforms:
         if transform_name == "homoglyph":
             transformed = homoglyph_substitution(
-                text=transformed, probability=active_config.homoglyph_probability, rng=rng
+                text=transformed,
+                probability=active_config.homoglyph_probability,
+                rng=rng,
+                include_sets=active_config.homoglyph_include_sets,
+                exclude_sets=active_config.homoglyph_exclude_sets,
+                preserve_digits=active_config.preserve_digits,
             )
         elif transform_name == "leetspeak":
             transformed = leetspeak_transformation(
@@ -107,6 +126,12 @@ def apply_pipeline(
         elif transform_name == "spacing_noise":
             transformed = spacing_punctuation_noise(
                 text=transformed, probability=active_config.spacing_noise_probability, rng=rng
+            )
+        elif transform_name == "invisible_spacing":
+            transformed = invisible_spacing_noise(
+                text=transformed,
+                probability=active_config.invisible_spacing_probability,
+                rng=rng,
             )
         elif transform_name == "random_noise":
             transformed = random_character_noise(
